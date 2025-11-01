@@ -26,15 +26,20 @@ public class PantallaJuego implements Screen {
     private int cantAsteroides;
 
     private Nave4 nave;
+    
+    // SISTEMA DE METEORITOS
     private ArrayList<Ball2> balls1 = new ArrayList<>();
     private ArrayList<Ball2> balls2 = new ArrayList<>();
     private ArrayList<Bullet> balas = new ArrayList<>();
 
-    
+    // SISTEMA DE PODERES
+    private ArrayList<GameObject> poderesActivos = new ArrayList<>();
+
+    // SISTEMA DE GENERACIÓN
     private float tiempoParaNuevoAsteroide = 1f;
-    private float intervaloGeneracion = 0.8f;
     private Random random = new Random();
     private int puntajeParaSiguienteRonda;
+    private boolean vidaExtraGenerada = false;
 
     public PantallaJuego(SpaceNavigation game, int ronda, int vidas, int score,
             int velXAsteroides, int velYAsteroides, int cantAsteroides) {
@@ -45,8 +50,8 @@ public class PantallaJuego implements Screen {
         this.velYAsteroides = velYAsteroides;
         this.cantAsteroides = cantAsteroides;
 
-        // AVANZAR USANDO PUNTAJE 
-        this.puntajeParaSiguienteRonda = score + (ronda * 50);
+       
+        this.puntajeParaSiguienteRonda = score + (50 * (int)Math.pow(2, ronda - 1));
 
         batch = game.getBatch();
         camera = new OrthographicCamera();
@@ -63,11 +68,13 @@ public class PantallaJuego implements Screen {
                 new Texture(Gdx.files.internal("Rocket2.png")),
                 Gdx.audio.newSound(Gdx.files.internal("pop-sound.mp3")));
         nave.setVidas(vidas);
+
+        // UNA VIDA EXTRA AL INICIAR CADA RONDA
+        generarVidaExtra();
     }
 
     private void generarNuevoAsteroide() {
-        // Generacion DE METEORITOS
-        int cantidad = 1 + random.nextInt(2); 
+        int cantidad = 1 + random.nextInt(2);
         
         for (int i = 0; i < cantidad; i++) {
             int size = 20 + random.nextInt(35);
@@ -85,6 +92,44 @@ public class PantallaJuego implements Screen {
         }
     }
 
+   
+    private void generarVidaExtra() {
+        if (vidaExtraGenerada) return;
+        
+        int x = random.nextInt((int) Gdx.graphics.getWidth() - 40);
+        int y = Gdx.graphics.getHeight();
+        
+        Texture texturaVida;
+        try {
+            texturaVida = new Texture(Gdx.files.internal("oneup.png"));
+        } catch (Exception e) {
+            texturaVida = new Texture(Gdx.files.internal("Rocket2.png"));
+        }
+        
+        VidaExtra vida = new VidaExtra(x, y, texturaVida);
+        poderesActivos.add(vida);
+        vidaExtraGenerada = true;
+    }
+
+    
+    private void generarEscudoAleatorio() {
+        
+        if (random.nextFloat() < 0.002f) 
+            int x = random.nextInt((int) Gdx.graphics.getWidth() - 40);
+            int y = Gdx.graphics.getHeight();
+            
+            Texture texturaEscudo;
+            try {
+                texturaEscudo = new Texture(Gdx.files.internal("escudo.png"));
+            } catch (Exception e) {
+                texturaEscudo = new Texture(Gdx.files.internal("Rocket2.png"));
+            }
+            
+            PoderEscudo escudo = new PoderEscudo(x, y, texturaEscudo);
+            poderesActivos.add(escudo);
+        }
+    }
+
     public void dibujaEncabezado() {
         CharSequence str = "Vidas: " + nave.getVidas() + " Ronda: " + ronda;
         game.getFont().getData().setScale(2f);
@@ -92,7 +137,13 @@ public class PantallaJuego implements Screen {
         game.getFont().draw(batch, "Score:" + this.score, Gdx.graphics.getWidth() - 150, 30);
         game.getFont().draw(batch, "HighScore:" + game.getHighScore(), Gdx.graphics.getWidth() / 2 - 100, 30);
         
-        // MOSTRAR PUNTAJE PARA AVANZAR DE ETAPA
+        // MOSTRAR TIEMPO DE ESCUDO
+        if (nave.tieneEscudoActivo()) {
+            String escudoStr = String.format("Escudo: %.1fs", nave.getTiempoEscudoRestante());
+            game.getFont().draw(batch, escudoStr, Gdx.graphics.getWidth() / 2 - 100, 90);
+        }
+        
+       
         int puntosRestantes = puntajeParaSiguienteRonda - score;
         if (puntosRestantes > 0) {
             game.getFont().draw(batch, "Siguiente ronda: " + puntosRestantes + " pts", 
@@ -101,7 +152,6 @@ public class PantallaJuego implements Screen {
             game.getFont().draw(batch, "¡Pasa a ronda " + (ronda + 1) + "!", 
                               Gdx.graphics.getWidth() / 2 - 100, 60);
         }
-        
     }
 
     @Override
@@ -110,7 +160,7 @@ public class PantallaJuego implements Screen {
         batch.begin();
         dibujaEncabezado();
 
-        // GENERAR RAPIDOS
+        // GENERACIÓN DE METEORITOS
         tiempoParaNuevoAsteroide -= delta;
         if (tiempoParaNuevoAsteroide <= 0) {
             generarNuevoAsteroide();
@@ -118,6 +168,9 @@ public class PantallaJuego implements Screen {
             float nuevoIntervalo = Math.max(0.3f, 0.8f - (ronda * 0.05f));
             tiempoParaNuevoAsteroide = nuevoIntervalo;
         }
+
+        // GENERAR ESCUDOS ALEATORIOS 
+        generarEscudoAleatorio();
 
         if (!nave.estaHerido()) {
             // ACTUALIZAR BALAS
@@ -128,10 +181,8 @@ public class PantallaJuego implements Screen {
                 for (int j = 0; j < balls1.size(); j++) {
                     if (b.checkCollision(balls1.get(j))) {
                         explosionSound.play();
-                        
                         int puntosGanados = 10 + (ronda * 3);
                         score += puntosGanados;
-                        
                         balls1.remove(j);
                         balls2.remove(j);
                         j--;
@@ -144,7 +195,7 @@ public class PantallaJuego implements Screen {
                 }
             }
 
-            // ACTUALIZAR ASTEROIDES
+            // ACTUALIZAR METEORITOS
             for (int i = 0; i < balls1.size(); i++) {
                 Ball2 ball = balls1.get(i);
                 ball.update();
@@ -156,13 +207,39 @@ public class PantallaJuego implements Screen {
                 }
             }
 
-            // COLISIONES ENTRE ASTEROIDES
+            // COLISIONES ENTRE METEORITOS
             for (int i = 0; i < balls1.size(); i++) {
                 Ball2 ball1 = balls1.get(i);
                 for (int j = i + 1; j < balls2.size(); j++) {
                     Ball2 ball2 = balls2.get(j);
                     ball1.checkCollision(ball2);
                 }
+            }
+        }
+
+        // ACTUALIZAR Y DIBUJAR PODERES
+        for (int i = 0; i < poderesActivos.size(); i++) {
+            GameObject poder = poderesActivos.get(i);
+            poder.update();
+            poder.draw(batch);
+            
+            // COLISIÓN PODER-NAVE
+            if (poder.getArea().overlaps(nave.getArea())) {
+                poder.aplicarEfecto(nave);
+                
+                if (poder instanceof Colisionable) {
+                    ((Colisionable) poder).onColision();
+                }
+                
+                poderesActivos.remove(i);
+                i--;
+                continue;
+            }
+            
+            // ELIMINAR PODERES INACTIVOS
+            if (!poder.isActive()) {
+                poderesActivos.remove(i);
+                i--;
             }
         }
 
@@ -173,7 +250,7 @@ public class PantallaJuego implements Screen {
 
         nave.draw(batch, this);
 
-        // DIBUJAR ASTEROIDES Y COLISIONES CON NAVE
+        // COLISIONES NAVE/METEORITOS
         for (int i = 0; i < balls1.size(); i++) {
             Ball2 b = balls1.get(i);
             b.draw(batch);
@@ -185,7 +262,7 @@ public class PantallaJuego implements Screen {
             }
         }
 
-        // FIN DEL JUEGO
+        // GAME OVER
         if (nave.estaDestruido()) {
             if (score > game.getHighScore())
                 game.setHighScore(score);
@@ -196,19 +273,13 @@ public class PantallaJuego implements Screen {
         }
         batch.end();
 
-     
+        // VERIFICAR SIGUENTE ETAPA
         if (score >= puntajeParaSiguienteRonda) {
             int nuevaRonda = ronda + 1;
-            
-        
             int nuevasVidas = nave.getVidas();
             
-         
-            int nuevaVelY = velYAsteroides + 1;
-            int nuevaCantidad = cantAsteroides + 2;
-            
             Screen ss = new PantallaJuego(game, nuevaRonda, nuevasVidas, score,
-                    velXAsteroides, nuevaVelY, nuevaCantidad);
+                    velXAsteroides, velYAsteroides + 1, cantAsteroides + 2);
             ss.resize(1200, 800);
             game.setScreen(ss);
             dispose();
@@ -242,7 +313,7 @@ public class PantallaJuego implements Screen {
 
     @Override
     public void dispose() {
-        this.explosionSound.dispose();
-        this.gameMusic.dispose();
+        explosionSound.dispose();
+        gameMusic.dispose();
     }
 }
