@@ -27,15 +27,14 @@ public class PantallaJuego implements Screen {
 
     private Nave4 nave;
     
-    // SISTEMA DE METEORITOS
+   
     private ArrayList<Ball2> balls1 = new ArrayList<>();
     private ArrayList<Ball2> balls2 = new ArrayList<>();
     private ArrayList<Bullet> balas = new ArrayList<>();
 
-    // SISTEMA DE PODERES
     private ArrayList<GameObject> poderesActivos = new ArrayList<>();
 
-    // SISTEMA DE GENERACIÓN
+   
     private float tiempoParaNuevoAsteroide = 1f;
     private Random random = new Random();
     private int puntajeParaSiguienteRonda;
@@ -50,7 +49,7 @@ public class PantallaJuego implements Screen {
         this.velYAsteroides = velYAsteroides;
         this.cantAsteroides = cantAsteroides;
 
-       
+        // PUNTAJE POR ETAPA: 50 × 2^(ronda-1)
         this.puntajeParaSiguienteRonda = score + (50 * (int)Math.pow(2, ronda - 1));
 
         batch = game.getBatch();
@@ -69,8 +68,10 @@ public class PantallaJuego implements Screen {
                 Gdx.audio.newSound(Gdx.files.internal("pop-sound.mp3")));
         nave.setVidas(vidas);
 
-        // UNA VIDA EXTRA AL INICIAR CADA RONDA
-        generarVidaExtra();
+        // SOLO UNA VIDA EXTRA AL INICIAR PRIMERA RONDA
+        if (ronda == 1) {
+            generarVidaExtra();
+        }
     }
 
     private void generarNuevoAsteroide() {
@@ -92,7 +93,7 @@ public class PantallaJuego implements Screen {
         }
     }
 
-   
+    //(SOLO UNA POR RONDA)
     private void generarVidaExtra() {
         if (vidaExtraGenerada) return;
         
@@ -111,10 +112,9 @@ public class PantallaJuego implements Screen {
         vidaExtraGenerada = true;
     }
 
-    
+    // GENERAR ESCUDOS
     private void generarEscudoAleatorio() {
-        
-        if (random.nextFloat() < 0.002f) 
+        if (random.nextFloat() < 0.002f) { // 0.2% de probabilidad - MUY RARO
             int x = random.nextInt((int) Gdx.graphics.getWidth() - 40);
             int y = Gdx.graphics.getHeight();
             
@@ -143,7 +143,7 @@ public class PantallaJuego implements Screen {
             game.getFont().draw(batch, escudoStr, Gdx.graphics.getWidth() / 2 - 100, 90);
         }
         
-       
+        // MOSTRAR PUNTOS PARA SIGUIENTE RONDA
         int puntosRestantes = puntajeParaSiguienteRonda - score;
         if (puntosRestantes > 0) {
             game.getFont().draw(batch, "Siguiente ronda: " + puntosRestantes + " pts", 
@@ -169,11 +169,11 @@ public class PantallaJuego implements Screen {
             tiempoParaNuevoAsteroide = nuevoIntervalo;
         }
 
-        // GENERAR ESCUDOS ALEATORIOS 
+        // GENERAR ESCUDOS ALEATORIOS
         generarEscudoAleatorio();
 
         if (!nave.estaHerido()) {
-            // ACTUALIZAR BALAS
+            
             for (int i = 0; i < balas.size(); i++) {
                 Bullet b = balas.get(i);
                 b.update();
@@ -223,7 +223,7 @@ public class PantallaJuego implements Screen {
             poder.update();
             poder.draw(batch);
             
-            // COLISIÓN PODER-NAVE
+            
             if (poder.getArea().overlaps(nave.getArea())) {
                 poder.aplicarEfecto(nave);
                 
@@ -231,8 +231,11 @@ public class PantallaJuego implements Screen {
                     ((Colisionable) poder).onColision();
                 }
                 
-                poderesActivos.remove(i);
-                i--;
+                
+                if (poder instanceof Colisionable && ((Colisionable) poder).debeEliminarse()) {
+                    poderesActivos.remove(i);
+                    i--;
+                }
                 continue;
             }
             
@@ -250,7 +253,7 @@ public class PantallaJuego implements Screen {
 
         nave.draw(batch, this);
 
-        // COLISIONES NAVE/METEORITOS
+        // COLISIONES NAVE-METEORITOS
         for (int i = 0; i < balls1.size(); i++) {
             Ball2 b = balls1.get(i);
             b.draw(batch);
@@ -273,7 +276,7 @@ public class PantallaJuego implements Screen {
         }
         batch.end();
 
-        // VERIFICAR SIGUENTE ETAPA
+        // AVANZAR DE RONDA
         if (score >= puntajeParaSiguienteRonda) {
             int nuevaRonda = ronda + 1;
             int nuevasVidas = nave.getVidas();
