@@ -10,19 +10,27 @@ public class VidaExtra extends GameObject implements Colisionable {
         super(x, y, 30, 0, -2, tx);
     }
     
+    // GM2.2 - IMPLEMENTACIÓN DEL MÉTODO ABSTRACTO DEL TEMPLATE METHOD
     @Override
-    public void update() {
-        if (!efectoActivado) {
-            super.update();
-        } else {
-            //EFECTO ESPECIAL
+    protected void aplicarComportamientoEspecifico() {
+        if (efectoActivado) {
+            // ANIMACION
             tiempoEfecto++;
-            spr.setScale(1.0f + (tiempoEfecto * 0.1f)); //SE AGRANDA
+            spr.setScale(1.0f + (tiempoEfecto * 0.1f)); // SE AGRANDA
             spr.setAlpha(1.0f - (tiempoEfecto * 0.05f)); // SE DESAPARECE
             
             if (tiempoEfecto > 20) {
-                active = false; //ELIMINARSE DESPUES DEL EFECTO
+                active = false; // ELIMINARSE DESPUES DEL EFECTO
             }
+        }
+    }
+    
+    // GM2.2 - OVERRIDE DEL HOOK METHOD OPCIONAL
+    @Override
+    protected void comportamientoPostActualizacion() {
+        if (!efectoActivado) {
+            // ANIMACION
+            spr.setY(spr.getY() + (float)Math.sin(System.currentTimeMillis() * 0.005) * 0.8f);
         }
     }
     
@@ -36,23 +44,23 @@ public class VidaExtra extends GameObject implements Colisionable {
         return "VidaExtra";
     }
     
-
+    // IMPLEMENTACIÓN DE COLISIONABLE
+    
     @Override
     public boolean debeEliminarse() {
-        
+        // ELIMINAR
         return efectoActivado && tiempoEfecto > 20;
     }
     
     @Override
-    public void onColision() {
-        
+    public void onColision() {  
         efectoActivado = true;
         activarEfectoVisual();
     }
     
     @Override
     public void activarEfectoVisual() {
-        //SE CAMBIA A COLOR DORADO POR UN MOMENTO
-        spr.setColor(1, 1, 0.3f, 1); // Color dorado
+        // SE CAMBIA A COLOR DORADO POR UN MOMENTO
+        spr.setColor(1, 1, 0.3f, 1); // Color DORADO
     }
 }
