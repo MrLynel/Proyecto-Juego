@@ -26,6 +26,10 @@ public class Nave4 {
     private float tiempoEscudoRestante = 0;
     private Sprite sprEscudo;
     
+    // SISTEMA DE DISPARO TRIPLE
+    private boolean disparoTripleActivo = false;
+    private float tiempoDisparoTriple = 0;
+    
     public Nave4(int x, int y, Texture tx, Sound soundChoque, Texture txBala, Sound soundBala) {
         sonidoHerido = soundChoque;
         this.soundBala = soundBala;
@@ -34,15 +38,10 @@ public class Nave4 {
         spr.setPosition(x, y);
         spr.setBounds(x, y, 45, 45);
         
-        
-        try {
-            Texture txEscudo = new Texture(Gdx.files.internal("escudo.png"));
-            sprEscudo = new Sprite(txEscudo);
-        } catch (Exception e) {
-            
-            sprEscudo = new Sprite(new Texture(Gdx.files.internal("Rocket2.png")));
-        }
-        sprEscudo.setSize(60, 60); 
+        ResourceManager resources = ResourceManager.getInstance();
+        Texture txEscudo = resources.getTexture("escudo.png");
+        sprEscudo = new Sprite(txEscudo);
+        sprEscudo.setSize(60, 60);
         sprEscudo.setPosition(x - 7.5f, y - 7.5f);
     }
     
@@ -71,26 +70,29 @@ public class Nave4 {
                     escudoActivo = false;
                 }
                 
-                
                 sprEscudo.setPosition(spr.getX() - 7.5f, spr.getY() - 7.5f);
                 
-                
-                if (tiempoEscudoRestante < 3) {
+                if (tiempoEscudoRestante < 1) {
                     float alpha = (MathUtils.sin(tiempoEscudoRestante * 10) + 1) / 2;
                     sprEscudo.setAlpha(alpha);
                 } else {
                     sprEscudo.setAlpha(0.7f);
                 }
                 
-               
                 sprEscudo.draw(batch);
             }
             
-           
+            // ACTUALIZAR DISPARO TRIPLE
+            if (disparoTripleActivo) {
+                tiempoDisparoTriple -= Gdx.graphics.getDeltaTime();
+                if (tiempoDisparoTriple <= 0) {
+                    disparoTripleActivo = false;
+                }
+            }
+            
             spr.draw(batch);
             
         } else {
-            
             spr.setX(spr.getX() + MathUtils.random(-2, 2));
             spr.draw(batch);
             spr.setX(spr.getX() - MathUtils.random(-2, 2));
@@ -100,17 +102,47 @@ public class Nave4 {
         
         // DISPARO
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
-            Bullet bala = new Bullet(spr.getX() + spr.getWidth() / 2 - 5, 
-                                   spr.getY() + spr.getHeight() - 5, 0, 3, txBala);
-            juego.agregarBala(bala);
-            soundBala.play();
+            if (disparoTripleActivo) {
+                // DISPARO TRIPLE
+                Bullet balaCentro = new Bullet(spr.getX() + spr.getWidth() / 2 - 5, 
+                                             spr.getY() + spr.getHeight() - 5, 0, 3, txBala);
+                Bullet balaIzquierda = new Bullet(spr.getX() + spr.getWidth() / 4 - 5, 
+                                                spr.getY() + spr.getHeight() - 5, -1, 3, txBala);
+                Bullet balaDerecha = new Bullet(spr.getX() + 3 * spr.getWidth() / 4 - 5, 
+                                              spr.getY() + spr.getHeight() - 5, 1, 3, txBala);
+                
+                juego.agregarBala(balaCentro);
+                juego.agregarBala(balaIzquierda);
+                juego.agregarBala(balaDerecha);
+                soundBala.play();
+            } else {
+                // DISPARO NORMAL
+                Bullet bala = new Bullet(spr.getX() + spr.getWidth() / 2 - 5, 
+                                       spr.getY() + spr.getHeight() - 5, 0, 3, txBala);
+                juego.agregarBala(bala);
+                soundBala.play();
+            }
         }
     }
     
+    // MÉTODO PARA ACTIVAR DISPARO TRIPLE
+    public void activarDisparoTriple(float duracion) {
+        this.disparoTripleActivo = true;
+        this.tiempoDisparoTriple = duracion;
+    }
+    
+    public boolean tieneDisparoTriple() {
+        return disparoTripleActivo;
+    }
+    
+    public float getTiempoDisparoTripleRestante() {
+        return tiempoDisparoTriple;
+    }
+    
+    // ... (el resto de los métodos se mantienen igual)
     public boolean checkCollision(Ball2 b) {
-        // SI TIENE ESCUDO ACTIVO, NO RECIBE DAÑO
         if (escudoActivo) {
-            return true; 
+            return true;
         }
         
         if (!herido && b.getArea().overlaps(spr.getBoundingRectangle())) {
@@ -125,12 +157,11 @@ public class Nave4 {
         return false;
     }
     
- 
     public void activarEscudo(float duracion) {
         this.escudoActivo = true;
         this.tiempoEscudoRestante = duracion;
         if (sprEscudo != null) {
-            sprEscudo.setAlpha(0.7f); //EFECTO ESCUDO TRANSPARENTE
+            sprEscudo.setAlpha(0.7f);
         }
     }
     
@@ -168,5 +199,9 @@ public class Nave4 {
     
     public Rectangle getArea() {
         return spr.getBoundingRectangle();
+    }
+    
+    public Sound getSoundBala() {
+        return soundBala;
     }
 }
