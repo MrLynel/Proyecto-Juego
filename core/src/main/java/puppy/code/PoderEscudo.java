@@ -11,17 +11,11 @@ public class PoderEscudo extends GameObject implements Colisionable {
     }
     
     @Override
-    public void update() {
-        if (!efectoActivado) {
-            super.update();
-            
-            
-            spr.setY(spr.getY() + (float)Math.sin(System.currentTimeMillis() * 0.01) * 0.5f);
-        } else {
-            
+    protected void aplicarComportamientoEspecifico() {
+        if (efectoActivado) {
             tiempoEfecto++;
-            spr.rotate(10); 
-            spr.setScale(1.5f - (tiempoEfecto * 0.05f)); 
+            spr.rotate(10);
+            spr.setScale(1.5f - (tiempoEfecto * 0.05f));
             
             if (tiempoEfecto > 15) {
                 active = false;
@@ -30,8 +24,16 @@ public class PoderEscudo extends GameObject implements Colisionable {
     }
     
     @Override
+    protected void comportamientoPostActualizacion() {
+        if (!efectoActivado) {
+            spr.setY(spr.getY() + (float)Math.sin(System.currentTimeMillis() * 0.01) * 0.5f);
+        }
+    }
+    
+    @Override
     public void aplicarEfecto(Nave4 nave) {
-        nave.activarEscudo(10);
+        // SOLO 3 SEGUNDOS DE ESCUDO 
+        nave.activarEscudo(3);
     }
     
     @Override
@@ -39,10 +41,8 @@ public class PoderEscudo extends GameObject implements Colisionable {
         return "Escudo";
     }
     
-    
     @Override
     public boolean debeEliminarse() {
-        
         return efectoActivado && tiempoEfecto > 15;
     }
     
@@ -54,7 +54,6 @@ public class PoderEscudo extends GameObject implements Colisionable {
     
     @Override
     public void activarEfectoVisual() {
-        
         spr.setColor(0.3f, 0.5f, 1, 1);
     }
 }
